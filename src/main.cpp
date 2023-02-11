@@ -37,7 +37,7 @@ WiFiClient wifiClient;
 #define DATA_PIN      7
 #define CS_PIN        4
 // State Machine.
-#define STATE_DELAY_MS 100
+#define STATE_DELAY_MS 50
 
 //---------------------------------------------------------------------------------------------------------------------
 // Class
@@ -59,8 +59,8 @@ struct WeatherInfo
 
     String get_string()
     {
-        String n = "Name: " + name + ", Weather: " + weather + ", Weather_Desc: " + weather_desc +
-                   ", Temperature: " + temperature_c + ", Humid: " + humidity_perc + " = [Counter " + counter + "]";
+        String n = name + ", " + weather + ": " + weather_desc + ". T: " + temperature_c + " C, H: " + humidity_perc +
+                   "% ==== [Counter " + counter + "]";
         return n;
     }
 };
@@ -158,9 +158,7 @@ private:
 // Global Variables
 //---------------------------------------------------------------------------------------------------------------------
 MD_Parola P = MD_Parola(HARDWARE_TYPE, CS_PIN, MAX_DEVICES);
-String things_to_show = "0";
-
-uint32_t dummy_counter = 0;
+String things_to_show = "";
 
 StateMachine machine = StateMachine();
 
@@ -179,6 +177,8 @@ bool ev_idle();
 //---------------------------------------------------------------------------------------------------------------------
 // Setup and Loop
 //---------------------------------------------------------------------------------------------------------------------
+
+//---------------------------------------------------------------------------------------------------------------------
 void connectWifi()
 {
     WiFi.begin(Authentication::WIFI_SSID, Authentication::WIFI_PASSWORD);
@@ -196,6 +196,7 @@ void connectWifi()
     Serial.println(WiFi.localIP());
     Serial.println();
 }
+
 //---------------------------------------------------------------------------------------------------------------------
 void setup()
 {
@@ -221,21 +222,34 @@ void loop()
 // Functions Definition
 //---------------------------------------------------------------------------------------------------------------------
 
+bool time_to_gather = false;
+bool pending_gather = false;
+
 //---------------------------------------------------------------------------------------------------------------------
 void idle_state()
 {
-    Serial.println("[Idle State]");
+    if (machine.executeOnce)
+    {
+        Serial.println("[Idle State, Entering]");
+    }
+
     if (P.displayAnimate())
     {
-        P.displayText(things_to_show.c_str(), PA_LEFT, 100, 100, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
+        // Done displaying, do we have a pending request?
+        if (pending_gather)
+        {
+            // Clear the pending flag.
+            pending_gather = false;
+            // Get ready to gather.
+            time_to_gather = true;
+            Serial.println("Time to gather [Event: Gather]");
+        }
+        else
+        {
+            // Nothing pending, redraw.
+            P.displayText(things_to_show.c_str(), PA_LEFT, 50, 50, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
+        }
     }
-}
-
-//---------------------------------------------------------------------------------------------------------------------
-bool ev_gather()
-{
-    Serial.println("[Event: Gather]");
-    bool return_val = false;
 
     static const uint32_t ONE_MINUTE = 1000 * 60;
     uint32_t current_millis = millis();
@@ -243,24 +257,37 @@ bool ev_gather()
     // A simple timer actually for a minute...
     if (current_millis - previous_millis > ONE_MINUTE)
     {
-        // Prepare to go to the next state.
-        return_val = true;
         // Save the last time tick.
         previous_millis = current_millis;
+        // Add a pending request.
+        pending_gather = true;
+        // Pending flag.
+        Serial.println("Pending [Event: Gather]");
     }
+}
 
-    return return_val;
+//---------------------------------------------------------------------------------------------------------------------
+bool ev_gather()
+{
+    if (time_to_gather)
+    {
+        time_to_gather = false;
+        Serial.println("[Event: Gather]");
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }
 
 //---------------------------------------------------------------------------------------------------------------------
 void gather_state()
 {
-    Serial.println("[Gather State]");
     if (machine.executeOnce) // Execute one time gathering of weather.
     {
         Serial.println("[Gather State, Entering]");
-        // Dummy
-        dummy_counter += 1;
+
         wr.read();
         weather_info = wr.get_current_weather();
 
