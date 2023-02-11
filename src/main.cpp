@@ -1,5 +1,5 @@
 //---------------------------------------------------------------------------------------------------------------------
-// GetWeather.ino
+// main.cpp
 // Get the weather from OpenWeather and show it on the display.
 // Style: State Machine
 //---------------------------------------------------------------------------------------------------------------------
@@ -8,7 +8,6 @@
 // Includes
 //---------------------------------------------------------------------------------------------------------------------
 #include <Arduino.h>
-
 #include <ArduinoJson.h>
 #include <ESP8266HTTPClient.h>
 #include <ESP8266WiFi.h>
@@ -16,7 +15,6 @@
 #include <MD_Parola.h>
 #include <SPI.h>
 #include <StateMachine.h>
-
 #include <WiFiClient.h>
 
 WiFiClient wifiClient;
@@ -165,6 +163,8 @@ StateMachine machine = StateMachine();
 WeatherInfo weather_info;
 WeatherReader wr(Authentication::API_KEY);
 
+bool time_to_gather = false;
+bool pending_gather = false;
 uint32_t previous_millis = 0;
 //---------------------------------------------------------------------------------------------------------------------
 // Functions Declaration
@@ -221,9 +221,6 @@ void loop()
 //---------------------------------------------------------------------------------------------------------------------
 // Functions Definition
 //---------------------------------------------------------------------------------------------------------------------
-
-bool time_to_gather = false;
-bool pending_gather = false;
 
 //---------------------------------------------------------------------------------------------------------------------
 void idle_state()
