@@ -13,3 +13,16 @@ The hardware utilizes a simple Wemos D1 board and 4x8x8 dot matrix module. It is
 * Weather information from https://openweathermap.org/
 
 ![github_state_diagram](https://github.com/seryafarma/Weather/blob/main/state_diagram.png)
+
+## Note
+We are using OpenWeatherMap API
+
+https://openweathermap.org/price
+
+> Free
+> 60 calls/minute
+> 1,000,000 calls/month
+
+We call 1 call a minute = 1440 calls a day = 43200 calls a month.
+
+However since the weather doesn't change that much, this can be lowered to a call every 5 minutes.
