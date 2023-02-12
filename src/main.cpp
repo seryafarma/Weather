@@ -8,21 +8,21 @@
 // Includes
 //---------------------------------------------------------------------------------------------------------------------
 #include <Arduino.h>
-#include <ArduinoJson.h>
-#include <ESP8266HTTPClient.h>
 #include <ESP8266WiFi.h>
 #include <MD_MAX72xx.h>
 #include <MD_Parola.h>
 #include <SPI.h>
 #include <StateMachine.h>
-#include <WiFiClient.h>
-
-WiFiClient wifiClient;
 
 //---------------------------------------------------------------------------------------------------------------------
 // Local Includes
 //---------------------------------------------------------------------------------------------------------------------
 #include "auth.hpp"
+#include "weather_info.hpp"
+#include "weather_reader.hpp"
+
+using Weather::WeatherInfo;
+using Weather::WeatherReader;
 
 //---------------------------------------------------------------------------------------------------------------------
 // Defines
@@ -41,125 +41,13 @@ WiFiClient wifiClient;
 // Class
 //---------------------------------------------------------------------------------------------------------------------
 
-struct WeatherInfo
-{
-    String name;
-    String weather;
-    String weather_desc;
-    String temperature_c;
-    String humidity_perc;
-    String counter;
-
-    void clear()
-    {
-        weather = weather_desc = temperature_c = humidity_perc = "";
-    }
-
-    String get_string()
-    {
-        String n = name + ", " + weather + ": " + weather_desc + ". T: " + temperature_c + " C, H: " + humidity_perc +
-                   "% ==== [Counter " + counter + "]";
-        return n;
-    }
-};
-
-class WeatherReader
-{
-public:
-    WeatherReader(String properties)
-    {
-        url = "http://api.openweathermap.org/data/2.5/weather?" + properties;
-    }
-
-    void read()
-    {
-        get_http_weather(url.c_str());
-    }
-
-    WeatherInfo get_current_weather()
-    {
-        return current_weather;
-    }
-
-private:
-    void get_http_weather(const char* serverName)
-    {
-        static int mycounter = 0;
-
-        current_weather.clear();
-        if (WiFi.status() == WL_CONNECTED)
-        {
-            String json_array = get_request(serverName);
-
-            Serial.println(json_array);
-
-            DynamicJsonDocument doc(1024);
-            deserializeJson(doc, json_array);
-
-            {
-                const char* weather = NULL;
-                const char* weather_desc = NULL;
-                const char* name = NULL;
-                double temp = 0.0;
-                long hum = 0;
-
-                weather = doc["weather"][0]["main"];
-                current_weather.weather = String(weather);
-                weather_desc = doc["weather"][0]["description"];
-                current_weather.weather_desc = String(weather_desc);
-
-                temp = doc["main"]["temp"];
-                temp -= 273.15;
-                current_weather.temperature_c = String(temp);
-
-                hum = doc["main"]["humidity"];
-                current_weather.humidity_perc = String(hum);
-
-                name = doc["name"];
-                current_weather.name = String(name);
-
-                mycounter++;
-                current_weather.counter = String(mycounter);
-            }
-        }
-    }
-
-    String get_request(const char* server)
-    {
-        HTTPClient http;
-        http.begin(wifiClient, server);
-        int httpResponseCode = http.GET();
-
-        String payload = "{}";
-
-        if (httpResponseCode > 0)
-        {
-            Serial.print("HTTP Response code: ");
-            Serial.println(httpResponseCode);
-            payload = http.getString();
-        }
-        else
-        {
-            Serial.print("Error code: ");
-            Serial.println(httpResponseCode);
-        }
-        http.end();
-
-        return payload;
-    }
-
-    String url;
-    WeatherInfo current_weather;
-};
-
 //---------------------------------------------------------------------------------------------------------------------
 // Global Variables
 //---------------------------------------------------------------------------------------------------------------------
 MD_Parola P = MD_Parola(HARDWARE_TYPE, CS_PIN, MAX_DEVICES);
-String things_to_show = "";
 
 StateMachine machine = StateMachine();
-
+String things_to_show = "";
 WeatherInfo weather_info;
 WeatherReader wr(Authentication::API_KEY);
 
@@ -195,6 +83,11 @@ void connectWifi()
     Serial.println("WiFi connected!");
     Serial.println(WiFi.localIP());
     Serial.println();
+
+    long rssi = WiFi.RSSI();
+    Serial.print("signal strength (RSSI):");
+    Serial.print(rssi);
+    Serial.println(" dBm");
 }
 
 //---------------------------------------------------------------------------------------------------------------------
