@@ -141,11 +141,11 @@ void idle_state()
         }
     }
 
-    static const uint32_t ONE_MINUTE = 1000 * 60;
+    static const uint32_t FIVE_MINUTE = 5UL * 60UL * 1000UL;
     uint32_t current_millis = millis();
 
     // A simple timer actually for a minute...
-    if (current_millis - previous_millis > ONE_MINUTE)
+    if (current_millis - previous_millis > FIVE_MINUTE)
     {
         // Save the last time tick.
         previous_millis = current_millis;
