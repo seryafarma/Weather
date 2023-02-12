@@ -10,6 +10,7 @@ IndentWrappedFunctionNames: 'true'
 KeepEmptyLinesAtTheStartOfBlocks: 'true'
 Language: Cpp
 NamespaceIndentation: None
+SortIncludes: 'true'
 SpacesInParentheses: 'false'
 SpacesInSquareBrackets: 'false'
 PointerAlignment: Left
