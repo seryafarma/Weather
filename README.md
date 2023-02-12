@@ -23,6 +23,7 @@ https://openweathermap.org/price
 > 60 calls/minute
 > 1,000,000 calls/month
 
-We call 1 call a minute = 1440 calls a day = 43200 calls a month.
-
+If we call 1 call a minute = 1440 calls a day = 43200 calls a month.
 However since the weather doesn't change that much, this can be lowered to a call every 5 minutes.
+
+This project calls once every 5 minutes for the current weather.
