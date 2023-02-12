@@ -28,10 +28,43 @@ WeatherInfo WeatherReader::get_current_weather()
 }
 
 //---------------------------------------------------------------------------------------------------------------------
-void WeatherReader::get_http_weather(const char* serverName)
+void WeatherReader::process_json(String& json_array)
 {
     static int mycounter = 0;
 
+    DynamicJsonDocument doc(1024);
+    deserializeJson(doc, json_array);
+
+    {
+        const char* weather = NULL;
+        const char* weather_desc = NULL;
+        const char* name = NULL;
+        double temp = 0.0;
+        long hum = 0;
+
+        weather = doc["weather"][0]["main"];
+        current_weather.weather = String(weather);
+        weather_desc = doc["weather"][0]["description"];
+        current_weather.weather_desc = String(weather_desc);
+
+        temp = doc["main"]["temp"];
+        temp -= 273.15;
+        current_weather.temperature_c = String(temp);
+
+        hum = doc["main"]["humidity"];
+        current_weather.humidity_perc = String(hum);
+
+        name = doc["name"];
+        current_weather.name = String(name);
+
+        mycounter++;
+        current_weather.counter = String(mycounter);
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void WeatherReader::get_http_weather(const char* serverName)
+{
     current_weather.clear();
     if (WiFi.status() == WL_CONNECTED)
     {
@@ -39,34 +72,7 @@ void WeatherReader::get_http_weather(const char* serverName)
 
         Serial.println(json_array);
 
-        DynamicJsonDocument doc(1024);
-        deserializeJson(doc, json_array);
-
-        {
-            const char* weather = NULL;
-            const char* weather_desc = NULL;
-            const char* name = NULL;
-            double temp = 0.0;
-            long hum = 0;
-
-            weather = doc["weather"][0]["main"];
-            current_weather.weather = String(weather);
-            weather_desc = doc["weather"][0]["description"];
-            current_weather.weather_desc = String(weather_desc);
-
-            temp = doc["main"]["temp"];
-            temp -= 273.15;
-            current_weather.temperature_c = String(temp);
-
-            hum = doc["main"]["humidity"];
-            current_weather.humidity_perc = String(hum);
-
-            name = doc["name"];
-            current_weather.name = String(name);
-
-            mycounter++;
-            current_weather.counter = String(mycounter);
-        }
+        process_json(json_array);
     }
 }
 
