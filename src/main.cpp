@@ -23,6 +23,9 @@ WiFiClient wifiClient;
 // Local Includes
 //---------------------------------------------------------------------------------------------------------------------
 #include "auth.hpp"
+#include "weather_info.hpp"
+
+using Weather::WeatherInfo;
 
 //---------------------------------------------------------------------------------------------------------------------
 // Defines
@@ -40,28 +43,6 @@ WiFiClient wifiClient;
 //---------------------------------------------------------------------------------------------------------------------
 // Class
 //---------------------------------------------------------------------------------------------------------------------
-
-struct WeatherInfo
-{
-    String name;
-    String weather;
-    String weather_desc;
-    String temperature_c;
-    String humidity_perc;
-    String counter;
-
-    void clear()
-    {
-        weather = weather_desc = temperature_c = humidity_perc = "";
-    }
-
-    String get_string()
-    {
-        String n = name + ", " + weather + ": " + weather_desc + ". T: " + temperature_c + " C, H: " + humidity_perc +
-                   "% ==== [Counter " + counter + "]";
-        return n;
-    }
-};
 
 class WeatherReader
 {
