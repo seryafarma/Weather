@@ -57,7 +57,7 @@ void WeatherReader::process_json(String& json_array)
         name = doc["name"];
         current_weather.name = String(name);
 
-        mycounter++;
+        mycounter += 5; // one count is 5 mins.
         current_weather.counter = String(mycounter);
     }
 }
