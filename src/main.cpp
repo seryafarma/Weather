@@ -67,7 +67,7 @@ bool ev_idle();
 //---------------------------------------------------------------------------------------------------------------------
 
 //---------------------------------------------------------------------------------------------------------------------
-void connectWifi()
+void connect_wifi()
 {
     WiFi.begin(Authentication::WIFI_SSID, Authentication::WIFI_PASSWORD);
     Serial.print("Connecting to ");
@@ -96,7 +96,7 @@ void setup()
     Serial.begin(9600);
     P.begin();
     delay(1500);
-    connectWifi();
+    connect_wifi();
 
     State* gather = machine.addState(&gather_state);
     State* idle = machine.addState(&idle_state);
