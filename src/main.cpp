@@ -13,6 +13,7 @@
 #include <MD_Parola.h>
 #include <SPI.h>
 #include <StateMachine.h>
+#include <ezTime.h>
 
 //---------------------------------------------------------------------------------------------------------------------
 // Local Includes
@@ -36,6 +37,8 @@ using Weather::WeatherReader;
 #define CS_PIN        4
 // State Machine.
 #define STATE_DELAY_MS 50
+// Timezone for the clock.
+#define TIMEZONE "Europe/Amsterdam"
 
 //---------------------------------------------------------------------------------------------------------------------
 // Class
@@ -46,6 +49,8 @@ using Weather::WeatherReader;
 //---------------------------------------------------------------------------------------------------------------------
 MD_Parola P = MD_Parola(HARDWARE_TYPE, CS_PIN, MAX_DEVICES);
 
+MD_MAX72XX mx = MD_MAX72XX(HARDWARE_TYPE, CS_PIN, MAX_DEVICES);
+
 StateMachine machine = StateMachine();
 String things_to_show = "";
 WeatherInfo weather_info;
@@ -54,6 +59,9 @@ WeatherReader wr(Authentication::API_KEY);
 bool time_to_gather = false;
 bool pending_gather = false;
 uint32_t previous_millis = 0;
+
+Timezone amst;
+
 //---------------------------------------------------------------------------------------------------------------------
 // Functions Declaration
 //---------------------------------------------------------------------------------------------------------------------
@@ -61,6 +69,8 @@ void idle_state();
 bool ev_gather();
 void gather_state();
 bool ev_idle();
+
+void scan_lines();
 
 //---------------------------------------------------------------------------------------------------------------------
 // Setup and Loop
@@ -97,6 +107,7 @@ void setup()
     P.begin();
     delay(1500);
     connectWifi();
+    waitForSync();
 
     State* gather = machine.addState(&gather_state);
     State* idle = machine.addState(&idle_state);
@@ -107,6 +118,8 @@ void setup()
 //---------------------------------------------------------------------------------------------------------------------
 void loop()
 {
+    String hm = amst.dateTime("Hi"); // move this to statemachine.
+
     machine.run();
     delay(STATE_DELAY_MS);
 }
@@ -191,4 +204,36 @@ bool ev_idle()
     Serial.println("[Event: Idle]");
     // Go to Idle immediately.
     return true;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void scanlines()
+{
+    mx.clear();
+    for (uint8_t row = 0; row < ROW_SIZE; row++)
+    {
+        mx.setRow(row, 0xff);
+        delay(300);
+        mx.setRow(row, 0x00);
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void printTime(String* time)
+{
+    char clockchar[5];
+    time->toCharArray(clockchar, 5);
+
+    mx.clear();
+    mx.update(MD_MAX72XX::OFF);
+
+    mx.setRow(2, 2, 0x01);
+    mx.setRow(2, 4, 0x01);
+    mx.setChar(1 * COL_SIZE - 2, clockchar[3]);
+    mx.setChar(2 * COL_SIZE - 2, clockchar[2]);
+    mx.setChar(3 * COL_SIZE - 1, clockchar[1]);
+    mx.setChar(4 * COL_SIZE - 1, clockchar[0]);
+
+    mx.update();
+    mx.update(MD_MAX72XX::ON);
 }
