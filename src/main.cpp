@@ -81,7 +81,7 @@ bool ev_clock();
 //---------------------------------------------------------------------------------------------------------------------
 
 //---------------------------------------------------------------------------------------------------------------------
-void connectWifi()
+void connect_wifi()
 {
     WiFi.begin(Authentication::WIFI_SSID, Authentication::WIFI_PASSWORD);
     Serial.print("Connecting to ");
@@ -112,6 +112,7 @@ void setup()
     delay(1500);
     connectWifi();
     waitForSync();
+
 
     State* gather = machine.addState(&gather_state);
     State* ntc = machine.addState(&ntc_state);
