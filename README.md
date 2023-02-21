@@ -9,8 +9,11 @@ Yeah it is mostly cloudy around here.
 The hardware utilizes a simple Wemos D1 board and 4x8x8 dot matrix module. It is simply using one SPI connection from the Wemos D1 to the module. The board needs to be connected to the internet to fetch the data.
 
 ## Software
-* A simple two states approach with Arduino state machine library from https://github.com/jrullan/StateMachine.
+* A simple states approach with Arduino state machine library from https://github.com/jrullan/StateMachine.
 * Weather information from https://openweathermap.org/
+* NTC time from `ezTime` https://github.com/ropg/ezTime
+
+It serves as a clock display, where every minute it will ask for the weather data and display it.
 
 ![github_state_diagram](https://github.com/seryafarma/Weather/blob/main/state_diagram.png)
 
