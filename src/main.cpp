@@ -62,9 +62,6 @@ bool pending_clock = false;
 bool time_to_gather = false;
 bool pending_gather = false;
 
-uint32_t previous_millis = 0;
-uint32_t previous_clock_millis = 0;
-
 Timezone amst;
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -79,7 +76,7 @@ bool ev_ntc();
 void clock_state();
 bool ev_clock();
 
-void scan_lines();
+void scanlines();
 
 //---------------------------------------------------------------------------------------------------------------------
 // Setup and Loop
@@ -126,6 +123,12 @@ void setup()
     gather->addTransition(&ev_ntc, ntc);
     ntc->addTransition(&ev_idle, idle);
     clock->addTransition(&ev_gather, gather);
+
+    // Initialize pseudo state
+    wr.read();
+    weather_info = wr.get_current_weather();
+    things_to_show = String(weather_info.get_string());
+    clock_to_show = amst.dateTime("Hi");
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -142,41 +145,26 @@ void loop()
 //---------------------------------------------------------------------------------------------------------------------
 void idle_state()
 {
+    static bool once = false;
+
     if (machine.executeOnce)
     {
+        once = false;
         Serial.println("[Idle State, Entering]");
     }
 
     if (P.displayAnimate())
     {
-        // Done displaying, do we have a pending request?
-        if (pending_clock)
+        if (once == false)
         {
-            // Clear the pending flag.
-            pending_clock = false;
-            // Get ready to show clock.
-            time_to_clock = true;
-            Serial.println("Time to show clock [Event: Clock]");
+            once = true;
+            Serial.println("[Idle State, Show Weather]");
+            P.displayText(things_to_show.c_str(), PA_LEFT, 50, 50, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
         }
         else
         {
-            // Nothing pending, redraw.
-            P.displayText(things_to_show.c_str(), PA_LEFT, 50, 50, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
+            time_to_clock = true;
         }
-    }
-
-    static const uint32_t FIVE_MINUTE = 5UL * 60UL * 1000UL;
-    uint32_t current_millis = millis();
-
-    // A simple timer actually for a minute...
-    if (current_millis - previous_millis > FIVE_MINUTE)
-    {
-        // Save the last time tick.
-        previous_millis = current_millis;
-        // Add a pending request.
-        pending_clock = true;
-        // Pending flag.
-        Serial.println("Pending [Event: Clock]");
     }
 }
 
@@ -200,7 +188,13 @@ void clock_state()
 {
     // Stay in this state for a minute.
     static const uint32_t ONE_MINUTE = 60UL * 1000UL;
+    static uint32_t previous_clock_millis = 0;
     uint32_t current_clock_millis = millis();
+
+    if (machine.executeOnce)
+    {
+        Serial.println("[Clock State, Entering]");
+    }
 
     if (P.displayAnimate())
     {
@@ -216,15 +210,16 @@ void clock_state()
         else
         {
             // Nothing pending, redraw.
-            P.displayText(clock_to_show.c_str(), PA_LEFT, 50, 50, PA_PRINT);
+            P.displayText(clock_to_show.c_str(), PA_CENTER, 50, 50, PA_PRINT);
         }
     }
 
     // A simple timer actually for a minute...
     if (current_clock_millis - previous_clock_millis > ONE_MINUTE)
     {
+        scanlines();
         // Save the last time tick.
-        previous_millis = current_clock_millis;
+        previous_clock_millis = current_clock_millis;
         // Add a pending request.
         pending_gather = true;
         // Pending flag.
@@ -289,7 +284,7 @@ void ntc_state()
     {
         Serial.println("[NTC State, Entering]");
 
-        clock_to_show = amst.dateTime("Hi");
+        clock_to_show = amst.dateTime("H:i");
 
         Serial.print("[NTC State, Showing Clock]");
         Serial.println(clock_to_show);
