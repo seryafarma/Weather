@@ -53,12 +53,17 @@ MD_MAX72XX mx = MD_MAX72XX(HARDWARE_TYPE, CS_PIN, MAX_DEVICES);
 
 StateMachine machine = StateMachine();
 String things_to_show = "";
+String clock_to_show = "";
 WeatherInfo weather_info;
 WeatherReader wr(Authentication::API_KEY);
 
+bool time_to_clock = false;
+bool pending_clock = false;
 bool time_to_gather = false;
 bool pending_gather = false;
+
 uint32_t previous_millis = 0;
+uint32_t previous_clock_millis = 0;
 
 Timezone amst;
 
@@ -126,8 +131,6 @@ void setup()
 //---------------------------------------------------------------------------------------------------------------------
 void loop()
 {
-    String hm = amst.dateTime("Hi"); // move this to statemachine.
-
     machine.run();
     delay(STATE_DELAY_MS);
 }
@@ -147,13 +150,13 @@ void idle_state()
     if (P.displayAnimate())
     {
         // Done displaying, do we have a pending request?
-        if (pending_gather)
+        if (pending_clock)
         {
             // Clear the pending flag.
-            pending_gather = false;
-            // Get ready to gather.
-            time_to_gather = true;
-            Serial.println("Time to gather [Event: Gather]");
+            pending_clock = false;
+            // Get ready to show clock.
+            time_to_clock = true;
+            Serial.println("Time to show clock [Event: Clock]");
         }
         else
         {
@@ -170,6 +173,58 @@ void idle_state()
     {
         // Save the last time tick.
         previous_millis = current_millis;
+        // Add a pending request.
+        pending_clock = true;
+        // Pending flag.
+        Serial.println("Pending [Event: Clock]");
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+bool ev_clock()
+{
+    if (time_to_clock)
+    {
+        time_to_clock = false;
+        Serial.println("[Event: Clock]");
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void clock_state()
+{
+    // Stay in this state for a minute.
+    static const uint32_t ONE_MINUTE = 60UL * 1000UL;
+    uint32_t current_clock_millis = millis();
+
+    if (P.displayAnimate())
+    {
+        // Done displaying, do we have a pending request?
+        if (pending_gather)
+        {
+            // Clear the pending flag.
+            pending_gather = false;
+            // Get ready to show clock.
+            time_to_gather = true;
+            Serial.println("Time to gather weather data [Event: Gather]");
+        }
+        else
+        {
+            // Nothing pending, redraw.
+            P.displayText(clock_to_show.c_str(), PA_LEFT, 50, 50, PA_PRINT);
+        }
+    }
+
+    // A simple timer actually for a minute...
+    if (current_clock_millis - previous_clock_millis > ONE_MINUTE)
+    {
+        // Save the last time tick.
+        previous_millis = current_clock_millis;
         // Add a pending request.
         pending_gather = true;
         // Pending flag.
@@ -199,10 +254,45 @@ void gather_state()
     {
         Serial.println("[Gather State, Entering]");
 
-        wr.read();
-        weather_info = wr.get_current_weather();
+        static const uint32_t FIVE_MINUTE = 5UL * 60UL * 1000UL;
+        static uint32_t previous_gather_millis = 0;
+        uint32_t current_gather_millis = millis();
 
-        things_to_show = String(weather_info.get_string());
+        // A simple timer actually for a minute...
+        if (current_gather_millis - previous_gather_millis > FIVE_MINUTE)
+        {
+            // Save the last time tick.
+            previous_gather_millis = current_gather_millis;
+
+            Serial.println("[Gather State, Read the weather]");
+
+            wr.read();
+            weather_info = wr.get_current_weather();
+
+            things_to_show = String(weather_info.get_string());
+        }
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+bool ev_ntc()
+{
+    Serial.println("[Event: NTC]");
+    // Go to NTC immediately.
+    return true;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void ntc_state()
+{
+    if (machine.executeOnce) // Execute one time gathering of NTC.
+    {
+        Serial.println("[NTC State, Entering]");
+
+        clock_to_show = amst.dateTime("Hi");
+
+        Serial.print("[NTC State, Showing Clock]");
+        Serial.println(clock_to_show);
     }
 }
 
