@@ -69,6 +69,10 @@ void idle_state();
 bool ev_gather();
 void gather_state();
 bool ev_idle();
+void ntc_state();
+bool ev_ntc();
+void clock_state();
+bool ev_clock();
 
 void scan_lines();
 
@@ -110,9 +114,13 @@ void setup()
     waitForSync();
 
     State* gather = machine.addState(&gather_state);
+    State* ntc = machine.addState(&ntc_state);
+    State* clock = machine.addState(&clock_state);
     State* idle = machine.addState(&idle_state);
-    idle->addTransition(&ev_gather, gather);
-    gather->addTransition(&ev_idle, idle);
+    idle->addTransition(&ev_clock, clock);
+    gather->addTransition(&ev_ntc, ntc);
+    ntc->addTransition(&ev_idle, idle);
+    clock->addTransition(&ev_gather, gather);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
