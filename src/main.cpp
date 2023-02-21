@@ -110,9 +110,8 @@ void setup()
     Serial.begin(9600);
     P.begin();
     delay(1500);
-    connectWifi();
+    connect_wifi();
     waitForSync();
-
 
     State* gather = machine.addState(&gather_state);
     State* ntc = machine.addState(&ntc_state);
