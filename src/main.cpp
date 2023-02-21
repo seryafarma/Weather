@@ -76,8 +76,6 @@ bool ev_ntc();
 void clock_state();
 bool ev_clock();
 
-void scanlines();
-
 //---------------------------------------------------------------------------------------------------------------------
 // Setup and Loop
 //---------------------------------------------------------------------------------------------------------------------
@@ -217,7 +215,6 @@ void clock_state()
     // A simple timer actually for a minute...
     if (current_clock_millis - previous_clock_millis > ONE_MINUTE)
     {
-        scanlines();
         // Save the last time tick.
         previous_clock_millis = current_clock_millis;
         // Add a pending request.
@@ -297,36 +294,4 @@ bool ev_idle()
     Serial.println("[Event: Idle]");
     // Go to Idle immediately.
     return true;
-}
-
-//---------------------------------------------------------------------------------------------------------------------
-void scanlines()
-{
-    mx.clear();
-    for (uint8_t row = 0; row < ROW_SIZE; row++)
-    {
-        mx.setRow(row, 0xff);
-        delay(300);
-        mx.setRow(row, 0x00);
-    }
-}
-
-//---------------------------------------------------------------------------------------------------------------------
-void printTime(String* time)
-{
-    char clockchar[5];
-    time->toCharArray(clockchar, 5);
-
-    mx.clear();
-    mx.update(MD_MAX72XX::OFF);
-
-    mx.setRow(2, 2, 0x01);
-    mx.setRow(2, 4, 0x01);
-    mx.setChar(1 * COL_SIZE - 2, clockchar[3]);
-    mx.setChar(2 * COL_SIZE - 2, clockchar[2]);
-    mx.setChar(3 * COL_SIZE - 1, clockchar[1]);
-    mx.setChar(4 * COL_SIZE - 1, clockchar[0]);
-
-    mx.update();
-    mx.update(MD_MAX72XX::ON);
 }
