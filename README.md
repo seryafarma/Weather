@@ -17,6 +17,8 @@ It serves as a clock display, where every 5 minutes it will ask for the weather 
 
 ![github_state_diagram](https://github.com/seryafarma/Weather/blob/main/state_diagram.png)
 
+There is a pseudo state called `Initialize` where we initialize the things we want to print.
+
 ## Note
 We are using OpenWeatherMap API
 
