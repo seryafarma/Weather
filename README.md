@@ -13,7 +13,7 @@ The hardware utilizes a simple Wemos D1 board and 4x8x8 dot matrix module. It is
 * Weather information from https://openweathermap.org/
 * NTC time from `ezTime` https://github.com/ropg/ezTime
 
-It serves as a clock display, where every minute it will ask for the weather data and display it.
+It serves as a clock display, where every 5 minutes it will ask for the weather data and display it.
 
 ![github_state_diagram](https://github.com/seryafarma/Weather/blob/main/state_diagram.png)
 
