@@ -13,6 +13,7 @@
 #include <MD_Parola.h>
 #include <SPI.h>
 #include <StateMachine.h>
+#include <ezTime.h>
 
 //---------------------------------------------------------------------------------------------------------------------
 // Local Includes
@@ -36,6 +37,8 @@ using Weather::WeatherReader;
 #define CS_PIN        4
 // State Machine.
 #define STATE_DELAY_MS 50
+// Timezone for the clock.
+#define TIMEZONE "Europe/Amsterdam"
 
 //---------------------------------------------------------------------------------------------------------------------
 // Class
@@ -46,14 +49,21 @@ using Weather::WeatherReader;
 //---------------------------------------------------------------------------------------------------------------------
 MD_Parola P = MD_Parola(HARDWARE_TYPE, CS_PIN, MAX_DEVICES);
 
+MD_MAX72XX mx = MD_MAX72XX(HARDWARE_TYPE, CS_PIN, MAX_DEVICES);
+
 StateMachine machine = StateMachine();
 String things_to_show = "";
+String clock_to_show = "";
 WeatherInfo weather_info;
 WeatherReader wr(Authentication::API_KEY);
 
+bool time_to_clock = false;
+bool pending_clock = false;
 bool time_to_gather = false;
 bool pending_gather = false;
-uint32_t previous_millis = 0;
+
+Timezone amst;
+
 //---------------------------------------------------------------------------------------------------------------------
 // Functions Declaration
 //---------------------------------------------------------------------------------------------------------------------
@@ -61,6 +71,10 @@ void idle_state();
 bool ev_gather();
 void gather_state();
 bool ev_idle();
+void ntc_state();
+bool ev_ntc();
+void clock_state();
+bool ev_clock();
 
 //---------------------------------------------------------------------------------------------------------------------
 // Setup and Loop
@@ -96,12 +110,25 @@ void setup()
     Serial.begin(9600);
     P.begin();
     delay(1500);
-    connect_wifi();
+    connectWifi();
+    waitForSync();
+
 
     State* gather = machine.addState(&gather_state);
+    State* ntc = machine.addState(&ntc_state);
+    State* clock = machine.addState(&clock_state);
     State* idle = machine.addState(&idle_state);
-    idle->addTransition(&ev_gather, gather);
-    gather->addTransition(&ev_idle, idle);
+    idle->addTransition(&ev_clock, clock);
+    gather->addTransition(&ev_ntc, ntc);
+    ntc->addTransition(&ev_idle, idle);
+    clock->addTransition(&ev_gather, gather);
+
+    // Initialize pseudo state
+    wr.read();
+    weather_info = wr.get_current_weather();
+    things_to_show = String(weather_info.get_string());
+    clock_to_show = amst.dateTime("Hi");
+    amst.setLocation(TIMEZONE);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
@@ -118,9 +145,55 @@ void loop()
 //---------------------------------------------------------------------------------------------------------------------
 void idle_state()
 {
+    static bool once = false;
+
     if (machine.executeOnce)
     {
+        once = false;
         Serial.println("[Idle State, Entering]");
+    }
+
+    if (P.displayAnimate())
+    {
+        if (once == false)
+        {
+            once = true;
+            Serial.println("[Idle State, Show Weather]");
+            P.displayText(things_to_show.c_str(), PA_LEFT, 50, 50, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
+        }
+        else
+        {
+            time_to_clock = true;
+        }
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+bool ev_clock()
+{
+    if (time_to_clock)
+    {
+        time_to_clock = false;
+        Serial.println("[Event: Clock]");
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void clock_state()
+{
+    // Stay in this state for a minute.
+    static const uint32_t ONE_MINUTE = 60UL * 1000UL;
+    static uint32_t previous_clock_millis = 0;
+    uint32_t current_clock_millis = millis();
+
+    if (machine.executeOnce)
+    {
+        Serial.println("[Clock State, Entering]");
     }
 
     if (P.displayAnimate())
@@ -130,25 +203,22 @@ void idle_state()
         {
             // Clear the pending flag.
             pending_gather = false;
-            // Get ready to gather.
+            // Get ready to show clock.
             time_to_gather = true;
-            Serial.println("Time to gather [Event: Gather]");
+            Serial.println("Time to gather weather data [Event: Gather]");
         }
         else
         {
             // Nothing pending, redraw.
-            P.displayText(things_to_show.c_str(), PA_LEFT, 50, 50, PA_SCROLL_LEFT, PA_SCROLL_LEFT);
+            P.displayText(clock_to_show.c_str(), PA_CENTER, 50, 50, PA_PRINT);
         }
     }
 
-    static const uint32_t FIVE_MINUTE = 5UL * 60UL * 1000UL;
-    uint32_t current_millis = millis();
-
     // A simple timer actually for a minute...
-    if (current_millis - previous_millis > FIVE_MINUTE)
+    if (current_clock_millis - previous_clock_millis > ONE_MINUTE)
     {
         // Save the last time tick.
-        previous_millis = current_millis;
+        previous_clock_millis = current_clock_millis;
         // Add a pending request.
         pending_gather = true;
         // Pending flag.
@@ -178,10 +248,45 @@ void gather_state()
     {
         Serial.println("[Gather State, Entering]");
 
-        wr.read();
-        weather_info = wr.get_current_weather();
+        static const uint32_t FIVE_MINUTE = 5UL * 60UL * 1000UL;
+        static uint32_t previous_gather_millis = 0;
+        uint32_t current_gather_millis = millis();
 
-        things_to_show = String(weather_info.get_string());
+        // A simple timer actually for a minute...
+        if (current_gather_millis - previous_gather_millis > FIVE_MINUTE)
+        {
+            // Save the last time tick.
+            previous_gather_millis = current_gather_millis;
+
+            Serial.println("[Gather State, Read the weather]");
+
+            wr.read();
+            weather_info = wr.get_current_weather();
+
+            things_to_show = String(weather_info.get_string());
+        }
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+bool ev_ntc()
+{
+    Serial.println("[Event: NTC]");
+    // Go to NTC immediately.
+    return true;
+}
+
+//---------------------------------------------------------------------------------------------------------------------
+void ntc_state()
+{
+    if (machine.executeOnce) // Execute one time gathering of NTC.
+    {
+        Serial.println("[NTC State, Entering]");
+
+        clock_to_show = amst.dateTime("H:i");
+
+        Serial.print("[NTC State, Showing Clock]");
+        Serial.println(clock_to_show);
     }
 }
 
