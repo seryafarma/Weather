@@ -127,6 +127,7 @@ void setup()
     weather_info = wr.get_current_weather();
     things_to_show = String(weather_info.get_string());
     clock_to_show = amst.dateTime("Hi");
+    amst.setLocation(TIMEZONE);
 }
 
 //---------------------------------------------------------------------------------------------------------------------
