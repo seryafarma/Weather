@@ -1,5 +1,7 @@
 @startuml state_diagram_weather
 [*] --> Gather
-Gather -> Idle : ev_idle
-Idle -> Gather : ev_gather
+Gather -> NTC : ev_ntc
+NTC -> Idle : ev_idle
+Idle -> Clock : ev_clock
+Clock -> Gather : ev_gather
 @enduml
